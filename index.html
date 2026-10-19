@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pixel Character Studio — редактор 16×16</title>
+<style>
+:root { color-scheme: dark; --bg:#111315; --surface:#1b1e20; --surface2:#232629; --line:#34393c; --soft:#9ea5a5; --text:#e7e5df; --accent:#d6c8ad; --snow:#b9c2cc; }
+* { box-sizing:border-box; }
+body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; background:radial-gradient(ellipse 85% 75% at 45% 0%,#25272a 0%,var(--bg) 65%); color:var(--text); min-height:100vh; }
+main { width:min(1400px,100%); padding:44px 26px 55px; margin:auto; }
+.eyebrow { color:#aeaaa1; text-transform:uppercase; font-size:11px; letter-spacing:.23em; margin-bottom:12px; }
+.header { display:flex; justify-content:space-between; align-items:end; flex-wrap:wrap; gap:16px; margin-bottom:22px; }
+.header-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+.language-select { border:1px solid #4b5053; border-radius:6px; padding:9px 10px; background:#151719; color:var(--text); font:inherit; }
+h1 { font-size:clamp(26px,3.2vw,40px); line-height:1.1; font-weight:520; letter-spacing:-.035em; margin:0; }
+.lead { margin:0; max-width:760px; font-size:14px; color:var(--soft); line-height:1.6; }
+.chip { border:1px solid #4d514f; background:#222527; color:#d4cfbd; border-radius:7px; padding:10px 13px; font-size:12px; letter-spacing:.09em; white-space:nowrap; }
+.columns { display:grid; grid-template-columns:minmax(0,1.55fr) minmax(330px,.95fr); gap:18px; align-items:start; }
+.panel { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:23px; box-shadow:0 15px 40px #0003; }
+.panel-title { font-size:11px; text-transform:uppercase; letter-spacing:.16em; color:#c9c4bb; font-weight:650; margin:0 0 8px; }
+.panel-sub { font-size:12px; color:var(--soft); line-height:1.5; margin:0; }
+.editor-holder { display:flex; justify-content:center; margin:23px 0 20px; }
+#editor { display:block; width:min(100%,512px); height:auto; aspect-ratio:1; image-rendering:pixelated; background:var(--snow); border:1px solid #545c63; cursor:crosshair; touch-action:none; }
+.actions,.preset-grid { display:flex; gap:8px; flex-wrap:wrap; }
+.actions { margin-top:18px; }
+button { font:inherit; color:var(--text); background:#303437; border:1px solid #555a5c; border-radius:6px; padding:9px 13px; font-size:12px; cursor:pointer; transition:background .15s, border-color .15s; }
+button:hover { background:#3b4043; border-color:#777c7d; }
+button:focus-visible { outline:2px solid #e4d4b7; outline-offset:3px; }
+button.primary { color:#1b1b1b; background:#d8cbb4; border-color:#e4d9c7; font-weight:600; }
+button.primary:hover { background:#f1e5d0; }
+button.chosen, .preset.active { background:#514940; color:#f0e3c9; border-color:#8a7967; }
+.hint { margin:0; font-size:12px; line-height:1.6; color:var(--soft); }
+.editor-options { display:flex; align-items:center; flex-wrap:wrap; gap:10px 22px; margin-top:14px; }
+.option { display:flex; align-items:center; gap:8px; font-size:13px; color:#d9d6d0; margin:0; }
+.option input { accent-color:#c7b8a0; width:15px; height:15px; }
+.sep { border:none; border-top:1px solid var(--line); margin:23px 0; }
+.swatches { display:flex; flex-wrap:wrap; gap:10px; margin:18px 0 13px; }
+.swatch { padding:0; height:36px; width:36px; min-width:36px; border-radius:4px; border:2px solid #51575b; position:relative; }
+.swatch.active { outline:2px solid #e3d7c0; outline-offset:3px; }
+.swatch.eraser { background-color:#a6aab0; background-image:linear-gradient(45deg,#d4d5d6 25%,transparent 25%,transparent 75%,#d4d5d6 75%),linear-gradient(45deg,#d4d5d6 25%,transparent 25%,transparent 75%,#d4d5d6 75%);background-position:0 0,6px 6px;background-size:12px 12px; }
+.previews { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.preview-card { min-width:0; min-height:174px; border:1px solid #363c40; border-radius:8px; background:#232628; padding:14px; display:flex; flex-direction:column; }
+.scale { color:#e6dfd1; font-weight:600; font-size:14px; letter-spacing:.02em; }
+.dims { font-size:11px; color:var(--soft); margin-top:5px; }
+.stage { display:flex; justify-content:center; align-items:center; flex:1; margin-top:12px; min-height:68px; background:#b9c2cc; border:1px solid #92999f; }
+.stage.night { background:#24282f; border-color:#3d444a; }
+#preview2x { width:32px; height:32px; display:block; image-rendering:pixelated; image-rendering:crisp-edges; }
+#preview1x { width:16px; height:16px; display:block; image-rendering:pixelated; image-rendering:crisp-edges; }
+.metadata { font-size:12px; color:#a9aeae; margin-top:12px; line-height:1.6; }
+.status { min-height:23px; color:#d8c6a8; margin-top:14px; font-size:12px; }
+.save-info { margin:10px 0 0; font-size:12px; line-height:1.6; color:#b8cbb9; min-height:19px; }
+.save-info.warning { color:#ead09f; }
+.file-actions { margin-top:10px; }
+.preset-grid { margin-top:15px; }
+.preset { display:flex; flex-direction:column; align-items:flex-start; gap:3px; padding:10px 12px; min-width:160px; text-align:left; }
+.preset strong { font-size:12px; letter-spacing:.03em; }
+.preset span { font-size:11px; color:#c8cbc8; line-height:1.4; }
+.note-box { margin-top:16px; padding:12px 13px; border-radius:8px; background:#202426; border:1px solid #33383b; font-size:12px; color:#d2d4d0; line-height:1.55; }
+.horse-anim { margin-top:18px; padding:14px; border-radius:10px; background:#202426; border:1px solid #33383b; }
+.horse-stage { display:flex; justify-content:center; align-items:center; min-height:96px; background:#b9c2cc; border:1px solid #92999f; border-radius:8px; margin-top:12px; }
+#horseAnim { width:64px; height:64px; display:block; image-rendering:pixelated; image-rendering:crisp-edges; }
+.anim-strip { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-top:12px; }
+.frame-btn { padding:8px; display:flex; flex-direction:column; align-items:center; gap:6px; }
+.frame-btn canvas { width:32px; height:32px; image-rendering:pixelated; image-rendering:crisp-edges; display:block; }
+.frame-btn small { color:#c8cbc8; font-size:11px; }
+.anim-section + .anim-section { margin-top:14px; }
+.footer { margin-top:24px; font-size:11px; color:#929999; line-height:1.6; }
+.workspace-grid { display:grid; grid-template-columns:280px minmax(460px,1fr) 300px; gap:18px; align-items:start; }
+.asset-tools,.frame-tools { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; margin-top:12px; }
+.asset-tools button,.frame-tools button { padding:8px 9px; }
+.search,.field { display:grid; gap:6px; color:var(--soft); font-size:11px; margin-top:12px; }
+.search input,.field input,.field select { width:100%; border:1px solid #4b5053; border-radius:6px; padding:9px 10px; background:#151719; color:var(--text); font:inherit; }
+.asset-list { display:grid; gap:6px; max-height:590px; overflow:auto; margin-top:14px; padding-right:4px; }
+.asset-group { position:sticky; top:0; z-index:1; margin:8px 0 2px; padding:6px 4px; background:var(--surface); color:#9b9f9d; font-size:10px; letter-spacing:.14em; text-transform:uppercase; }
+.asset-item { width:100%; text-align:left; display:grid; gap:2px; }
+.asset-item small { color:var(--soft); }
+.asset-item.active { background:#514940; border-color:#8a7967; }
+.toolbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.toolbar .swatches { margin:0; }
+.palette-builder { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+.palette-builder input[type="color"] { width:42px; height:36px; padding:3px; border:1px solid #555a5c; border-radius:6px; background:#232628; cursor:pointer; }
+.palette-builder button { padding:8px 10px; }
+.toolbar-spacer { flex:1; }
+.canvas-wrap { display:grid; place-items:center; margin:18px 0; overflow:auto; }
+#editor { max-width:512px; }
+.frame-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:22px; }
+.frame-strip { display:flex; gap:8px; overflow:auto; padding:10px 2px 4px; }
+.frame-card { flex:0 0 92px; padding:8px; display:grid; justify-items:center; gap:6px; text-align:center; }
+.frame-card canvas { width:48px; height:48px; image-rendering:pixelated; background:#b9c2cc; }
+.frame-card small { width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#c8cbc8; }
+.frame-card.active { background:#514940; border-color:#8a7967; }
+.preview-large { width:calc(16px * var(--preview-scale,10)); height:calc(16px * var(--preview-scale,10)); max-width:100%; image-rendering:pixelated; background:#b9c2cc; border:1px solid #92999f; display:block; margin:18px auto; }
+.status-line { min-height:20px; margin-top:12px; color:#d8c6a8; font-size:12px; line-height:1.5; }
+.save-badge { display:inline-flex; align-items:center; gap:7px; color:#b8cbb9; font-size:11px; }
+.save-badge.dirty { color:#ead09f; }
+.save-badge::before { content:'●'; }
+.compact { margin-top:10px; }
+.danger { color:#f0b8b8; }
+button:disabled { opacity:.4; cursor:not-allowed; }
+.empty { padding:16px 6px; color:var(--soft); font-size:12px; text-align:center; }
+.modal { width:min(430px,calc(100% - 28px)); border:1px solid #555a5c; border-radius:12px; padding:0; color:var(--text); background:#1b1e20; box-shadow:0 24px 80px #000b; }
+.modal::backdrop { background:#080a0bcc; backdrop-filter:blur(3px); }
+.modal form { padding:22px; }
+.modal h2 { margin:0 0 9px; font-size:19px; }
+.modal p { margin:0 0 15px; color:var(--soft); font-size:13px; line-height:1.55; white-space:pre-line; }
+.modal input,.modal select { width:100%; border:1px solid #555a5c; border-radius:6px; padding:10px; background:#111315; color:var(--text); font:inherit; }
+.modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
+.modal .danger-confirm { border-color:#8c4c4c; color:#ffd5d5; }
+@media(max-width:820px){main{padding:26px 14px 38px}.columns{grid-template-columns:1fr}.panel{padding:17px}.previews{gap:9px}.preview-card{padding:10px}.header{margin-bottom:20px}.preset{min-width:calc(50% - 4px)}}
+@media(max-width:1050px){.workspace-grid{grid-template-columns:240px minmax(420px,1fr)}.inspector{grid-column:1/-1}}
+@media(max-width:720px){.workspace-grid{grid-template-columns:1fr}.workspace-grid .panel{min-width:0}.asset-list{max-height:250px}.editor-holder{margin:14px 0}.frame-card{flex-basis:82px}}
+</style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Pixel Character Studio / 16×16</div>
+  <header class="header">
+    <div>
+      <h1 data-i18n="title">Редактор пиксельных персонажей</h1>
+    </div>
+    <div class="header-actions"><select id="languageSelect" class="language-select" data-i18n-aria="language"><option value="en">English</option><option value="es">Español</option><option value="ru">Русский</option><option value="zh">中文</option></select></div>
+  </header>
+
+  <div class="workspace-grid">
+    <aside class="panel" data-i18n-aria="sprites">
+      <h2 class="panel-title" data-i18n="sprites">Спрайты</h2>
+      <label class="search"><span data-i18n="search">Поиск</span>
+        <input id="assetSearch" type="search" data-i18n-placeholder="searchPlaceholder" placeholder="Название или группа…" autocomplete="off">
+      </label>
+      <label class="field"><span data-i18n="group">Группа</span>
+        <select id="groupFilter"><option value="">Все группы</option></select>
+      </label>
+      <div class="asset-tools">
+        <button id="newAsset" type="button" data-i18n="new">Новый</button>
+        <button id="duplicateAsset" type="button" data-i18n="duplicate">Дублировать</button>
+        <button id="renameAsset" type="button" data-i18n="rename">Переименовать</button>
+        <button id="deleteAsset" class="danger" type="button" data-i18n="delete">Удалить</button>
+      </div>
+      <div id="assetList" class="asset-list"></div>
+    </aside>
+
+    <section class="panel" data-i18n-aria="pixelEditor">
+      <div class="toolbar">
+        <div id="palette" class="swatches" role="group" data-i18n-aria="palette"></div>
+        <div class="palette-builder" data-i18n-aria="paletteSettings">
+          <input id="customColor" type="color" value="#4f8bd6" data-i18n-aria="newColor">
+          <button id="addColor" type="button" data-i18n="addColor">+ Цвет</button>
+          <button id="removeColor" class="danger" type="button" data-i18n="removeColor" disabled>Удалить цвет</button>
+        </div>
+        <span class="toolbar-spacer"></span>
+        <button id="undo" type="button" data-i18n="undo">↶ Отменить</button>
+        <button id="redo" type="button" data-i18n="redo">↷ Повторить</button>
+      </div>
+      <div class="editor-options">
+        <label class="option"><input id="grid" type="checkbox" checked> <span data-i18n="showGrid">Показывать сетку</span></label>
+        <label class="option"><input id="onionSkin" type="checkbox"> <span data-i18n="onion">Соседний кадр полупрозрачно</span></label>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="editor" width="512" height="512" data-i18n-aria="pixelGrid"></canvas>
+      </div>
+      <p class="hint" data-i18n="drawHint">Левая кнопка рисует, правая стирает. Ctrl+Z / Ctrl+Shift+Z — отмена и повтор.</p>
+
+      <div class="frame-head">
+        <div>
+          <h2 class="panel-title" data-i18n="frames">Кадры анимации</h2>
+          <p class="panel-sub" data-i18n="framesSub">Добавляйте, копируйте, удаляйте и меняйте порядок кадров.</p>
+        </div>
+        <button id="playAnimation" type="button" aria-pressed="false">▶ Просмотр</button>
+      </div>
+      <div id="frameStrip" class="frame-strip"></div>
+      <div class="frame-tools">
+        <button id="addFrame" type="button" data-i18n="addFrame">Добавить пустой</button>
+        <button id="duplicateFrame" type="button" data-i18n="duplicate">Дублировать</button>
+        <button id="moveFrameLeft" type="button" data-i18n="moveLeft">← Левее</button>
+        <button id="moveFrameRight" type="button" data-i18n="moveRight">Правее →</button>
+        <button id="deleteFrame" class="danger" type="button" data-i18n="deleteFrame">Удалить кадр</button>
+      </div>
+    </section>
+
+    <aside class="panel inspector" data-i18n-aria="settingsExport">
+      <h2 class="panel-title" data-i18n="preview">Предпросмотр</h2>
+      <canvas id="animationPreview" class="preview-large" width="16" height="16" data-i18n-aria="animationPreview"></canvas>
+      <label class="field"><span data-i18n="previewScale">Масштаб предпросмотра</span>
+        <select id="previewScale"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option><option value="8">8×</option><option value="10">10×</option></select>
+      </label>
+      <label class="field"><span data-i18n="spriteName">Название спрайта</span>
+        <input id="assetName" type="text" maxlength="64">
+      </label>
+      <label class="field"><span data-i18n="group">Группа</span>
+        <input id="assetGroup" type="text" maxlength="40" data-i18n-placeholder="groupPlaceholder" placeholder="Например: Герои">
+      </label>
+      <label class="field"><span data-i18n="frameName">Название кадра</span>
+        <input id="frameName" type="text" maxlength="64">
+      </label>
+      <label class="field"><span data-i18n="duration">Длительность кадра, мс</span>
+        <input id="frameDuration" type="number" min="25" max="5000" step="25">
+      </label>
+
+      <hr class="sep">
+      <h2 class="panel-title" data-i18n="projectSafety">Проект и защита</h2>
+      <div id="saveBadge" class="save-badge">Сохранено</div>
+      <div class="actions compact">
+        <button id="saveProject" class="primary" type="button" data-i18n="saveVersion">Сохранить версию</button>
+        <button id="restoreVersion" type="button" data-i18n="versions">Версии</button>
+        <button id="exportProject" type="button" data-i18n="projectJson">Проект JSON</button>
+        <button id="importProject" type="button" data-i18n="importJson">Импорт JSON</button>
+        <input id="projectFile" type="file" accept="application/json,.json" hidden>
+      </div>
+
+      <hr class="sep">
+      <h2 class="panel-title" data-i18n="importExport">Импорт и экспорт</h2>
+      <div class="actions compact">
+        <button id="exportFramePng" type="button" data-i18n="framePng">PNG кадра</button>
+        <button id="exportSheet" class="primary" type="button" data-i18n="exportSheet">Spritesheet ZIP · PNG + JSON</button>
+        <button id="importPng" type="button" data-i18n="importPng">Импорт PNG</button>
+        <input id="pngFile" type="file" accept="image/png,.png" hidden>
+      </div>
+      <p class="hint" style="margin-top:10px" data-i18n="pngHint">PNG при импорте приводится к текущей палитре редактора, включая добавленные вами цвета. Перед заменой проекта показывается состав и число конфликтов.</p>
+      <div id="status" class="status-line" aria-live="polite"></div>
+    </aside>
+  </div>
+  <div class="footer" data-i18n="footer">Проект и пять последних версий хранятся в этом браузере. Для переноса между компьютерами используйте экспорт проекта JSON.</div>
+</main>
+<dialog id="studioModal" class="modal">
+  <form method="dialog">
+    <h2 id="modalTitle"></h2>
+    <p id="modalMessage"></p>
+    <input id="modalInput" type="text" maxlength="64">
+    <select id="modalSelect"></select>
+    <div class="modal-actions">
+      <button value="cancel" type="submit" data-i18n="cancel">Отмена</button>
+      <button id="modalConfirm" value="confirm" class="primary" type="submit">Продолжить</button>
+    </div>
+  </form>
+</dialog>
+<script>
+'use strict';
+const SIZE=16;
+const BASE_COLORS={K:'#181b21',D:'#313137',M:'#595653',F:'#bdb5a6',L:'#e3ddcd',R:'#c63a3a'};
+const COLOR_NAMES={K:'Darkest',D:'Charcoal',M:'Dusty gray',F:'Light fur',L:'Highlights',R:'Bright red'};
+const PALETTE_KEYS='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+const UI_LANG_KEY='pixel-character-studio-language';
+const PREVIEW_SCALE_KEY='pixel-character-studio-preview-scale';
+const I18N={
+ ru:{title:'Редактор пиксельных персонажей',lead:'Самостоятельный редактор спрайтов и покадровой анимации. Создавайте персонажей, управляйте кадрами, проверяйте движение и экспортируйте готовые материалы.',localChip:'Локально · без привязки к игре',sprites:'Спрайты проекта',spritesSub:'Поиск и управление самостоятельными персонажами.',search:'Поиск',searchPlaceholder:'Название или группа…',group:'Группа',allGroups:'Все группы',new:'Новый',duplicate:'Дублировать',rename:'Переименовать',delete:'Удалить',addColor:'+ Цвет',removeColor:'Удалить цвет',undo:'↶ Отменить',redo:'↷ Повторить',showGrid:'Показывать сетку',onion:'Соседний кадр полупрозрачно',drawHint:'Левая кнопка рисует, правая стирает. Ctrl+Z / Ctrl+Shift+Z — отмена и повтор.',frames:'Кадры анимации',framesSub:'Добавляйте, копируйте, удаляйте и меняйте порядок кадров.',play:'▶ Просмотр',pause:'Ⅱ Пауза',addFrame:'Добавить пустой',moveLeft:'← Левее',moveRight:'Правее →',deleteFrame:'Удалить кадр',preview:'Предпросмотр',spriteName:'Название спрайта',groupPlaceholder:'Например: Герои',frameName:'Название кадра',duration:'Длительность кадра, мс',projectSafety:'Проект и защита',saved:'Сохранено',saveVersion:'Сохранить версию',versions:'Версии',projectJson:'Проект JSON',importJson:'Импорт JSON',importExport:'Импорт и экспорт',framePng:'PNG кадра',importPng:'Импорт PNG',pngHint:'PNG при импорте приводится к текущей палитре редактора, включая добавленные вами цвета.',footer:'Проект и пять последних версий хранятся в этом браузере. Для переноса между компьютерами используйте экспорт проекта JSON.',cancel:'Отмена',eraser:'Ластик',customColor:'Свой цвет',empty:'Ничего не найдено',frameUnit:'кадр',ms:'мс',ready:'Редактор готов. Проект работает локально и не связан с игрой.'},
+ en:{title:'Pixel Character Editor',lead:'A standalone sprite and frame-animation editor. Create characters, manage frames, preview motion, and export finished assets.',localChip:'Local · independent from any game',sprites:'Project sprites',spritesSub:'Search and manage standalone characters.',search:'Search',searchPlaceholder:'Name or group…',group:'Group',allGroups:'All groups',new:'New',duplicate:'Duplicate',rename:'Rename',delete:'Delete',addColor:'+ Color',removeColor:'Remove color',undo:'↶ Undo',redo:'↷ Redo',showGrid:'Show grid',onion:'Show previous frame as onion skin',drawHint:'Left click draws, right click erases. Ctrl+Z / Ctrl+Shift+Z — undo and redo.',frames:'Animation frames',framesSub:'Add, duplicate, delete, and reorder frames.',play:'▶ Preview',pause:'Ⅱ Pause',addFrame:'Add blank',moveLeft:'← Move left',moveRight:'Move right →',deleteFrame:'Delete frame',preview:'Preview',spriteName:'Sprite name',groupPlaceholder:'Example: Heroes',frameName:'Frame name',duration:'Frame duration, ms',projectSafety:'Project and safety',saved:'Saved',saveVersion:'Save version',versions:'Versions',projectJson:'Project JSON',importJson:'Import JSON',importExport:'Import and export',framePng:'Frame PNG',importPng:'Import PNG',pngHint:'Imported PNG files are mapped to the current palette, including your custom colors.',footer:'The project and five latest versions are stored in this browser. Export the project JSON to move it between computers.',cancel:'Cancel',eraser:'Eraser',customColor:'Custom color',empty:'No results',frameUnit:'frame',ms:'ms',ready:'Editor ready. The project is local and independent from any game.'},
+ es:{title:'Editor de personajes pixelados',lead:'Editor independiente de sprites y animación por fotogramas. Crea personajes, administra fotogramas, previsualiza el movimiento y exporta tus recursos.',localChip:'Local · independiente de cualquier juego',sprites:'Sprites del proyecto',spritesSub:'Busca y administra personajes independientes.',search:'Buscar',searchPlaceholder:'Nombre o grupo…',group:'Grupo',allGroups:'Todos los grupos',new:'Nuevo',duplicate:'Duplicar',rename:'Renombrar',delete:'Eliminar',addColor:'+ Color',removeColor:'Eliminar color',undo:'↶ Deshacer',redo:'↷ Rehacer',showGrid:'Mostrar cuadrícula',onion:'Mostrar fotograma anterior semitransparente',drawHint:'El botón izquierdo dibuja y el derecho borra. Ctrl+Z / Ctrl+Shift+Z — deshacer y rehacer.',frames:'Fotogramas de animación',framesSub:'Añade, duplica, elimina y reordena fotogramas.',play:'▶ Vista previa',pause:'Ⅱ Pausa',addFrame:'Añadir vacío',moveLeft:'← Mover a la izquierda',moveRight:'Mover a la derecha →',deleteFrame:'Eliminar fotograma',preview:'Vista previa',spriteName:'Nombre del sprite',groupPlaceholder:'Ejemplo: Héroes',frameName:'Nombre del fotograma',duration:'Duración del fotograma, ms',projectSafety:'Proyecto y seguridad',saved:'Guardado',saveVersion:'Guardar versión',versions:'Versiones',projectJson:'Proyecto JSON',importJson:'Importar JSON',importExport:'Importar y exportar',framePng:'PNG del fotograma',importPng:'Importar PNG',pngHint:'Los PNG importados se adaptan a la paleta actual, incluidos tus colores personalizados.',footer:'El proyecto y las cinco versiones más recientes se guardan en este navegador. Exporta el JSON para moverlo entre equipos.',cancel:'Cancelar',eraser:'Borrador',customColor:'Color personalizado',empty:'Sin resultados',frameUnit:'fotograma',ms:'ms',ready:'Editor listo. El proyecto es local e independiente de cualquier juego.'},
+ zh:{title:'像素角色编辑器',lead:'独立的精灵图与逐帧动画编辑器。创建角色、管理帧、预览动作并导出成品资源。',localChip:'本地运行 · 不依赖任何游戏',sprites:'项目精灵图',spritesSub:'搜索并管理独立角色。',search:'搜索',searchPlaceholder:'名称或分组…',group:'分组',allGroups:'全部分组',new:'新建',duplicate:'复制',rename:'重命名',delete:'删除',addColor:'+ 颜色',removeColor:'删除颜色',undo:'↶ 撤销',redo:'↷ 重做',showGrid:'显示网格',onion:'半透明显示上一帧',drawHint:'鼠标左键绘制，右键擦除。Ctrl+Z / Ctrl+Shift+Z — 撤销与重做。',frames:'动画帧',framesSub:'添加、复制、删除并调整帧顺序。',play:'▶ 预览',pause:'Ⅱ 暂停',addFrame:'添加空白帧',moveLeft:'← 左移',moveRight:'右移 →',deleteFrame:'删除帧',preview:'预览',spriteName:'精灵图名称',groupPlaceholder:'例如：英雄',frameName:'帧名称',duration:'帧时长（毫秒）',projectSafety:'项目与保护',saved:'已保存',saveVersion:'保存版本',versions:'版本',projectJson:'项目 JSON',importJson:'导入 JSON',importExport:'导入与导出',framePng:'当前帧 PNG',importPng:'导入 PNG',pngHint:'导入的 PNG 会映射到当前调色板，包括自定义颜色。',footer:'项目及最近五个版本保存在此浏览器中。可导出项目 JSON 并迁移到其他电脑。',cancel:'取消',eraser:'橡皮擦',customColor:'自定义颜色',empty:'没有结果',frameUnit:'帧',ms:'毫秒',ready:'编辑器已就绪。项目在本地运行，不依赖任何游戏。'}
+};
+I18N.ru.sprites='Спрайты';I18N.en.sprites='Sprites';I18N.es.sprites='Sprites';I18N.zh.sprites='精灵图';
+I18N.ru.previewScale='Масштаб предпросмотра';I18N.en.previewScale='Preview scale';I18N.es.previewScale='Escala de vista previa';I18N.zh.previewScale='预览缩放';
+Object.assign(I18N.ru,{language:'Язык интерфейса',pixelEditor:'Редактор пикселей',palette:'Палитра',paletteSettings:'Настройка палитры',newColor:'Новый цвет',pixelGrid:'Пиксельная сетка 16 на 16',settingsExport:'Настройки и экспорт',animationPreview:'Предпросмотр анимации'});
+Object.assign(I18N.en,{language:'Interface language',pixelEditor:'Pixel editor',palette:'Palette',paletteSettings:'Palette settings',newColor:'New color',pixelGrid:'16 by 16 pixel grid',settingsExport:'Settings and export',animationPreview:'Animation preview'});
+Object.assign(I18N.es,{language:'Idioma de la interfaz',pixelEditor:'Editor de píxeles',palette:'Paleta',paletteSettings:'Configuración de la paleta',newColor:'Color nuevo',pixelGrid:'Cuadrícula de 16 por 16 píxeles',settingsExport:'Configuración y exportación',animationPreview:'Vista previa de la animación'});
+Object.assign(I18N.zh,{language:'界面语言',pixelEditor:'像素编辑器',palette:'调色板',paletteSettings:'调色板设置',newColor:'新颜色',pixelGrid:'16×16 像素网格',settingsExport:'设置与导出',animationPreview:'动画预览'});
+I18N.ru.exportSheet='Спрайт-лист ZIP · PNG + JSON';I18N.en.exportSheet='Spritesheet ZIP · PNG + JSON';I18N.es.exportSheet='Hoja de sprites ZIP · PNG + JSON';I18N.zh.exportSheet='精灵表 ZIP · PNG + JSON';
+const COLOR_NAME_I18N={ru:{K:'Самый тёмный',D:'Угольный',M:'Пыльно-серый',F:'Светлая шерсть',L:'Светлые участки',R:'Ярко-красный'},en:COLOR_NAMES,es:{K:'Más oscuro',D:'Carbón',M:'Gris polvo',F:'Pelaje claro',L:'Luces',R:'Rojo brillante'},zh:{K:'最深色',D:'炭黑',M:'灰褐色',F:'浅色毛发',L:'高光',R:'亮红色'}};
+let uiLanguage=localStorage.getItem(UI_LANG_KEY)||'ru';if(!I18N[uiLanguage])uiLanguage='ru';
+let previewScale=Number(localStorage.getItem(PREVIEW_SCALE_KEY)||10);if(![1,2,4,8,10].includes(previewScale))previewScale=10;
+const tr=key=>I18N[uiLanguage][key]??I18N.ru[key]??key;
+const DIALOG_I18N={
+ ru:{save:'Сохранить',continue:'Продолжить',newSprite:'Новый спрайт',duplicateSprite:'Дублировать спрайт',defaultSprite:'Новый спрайт',copy:'копия',noGroup:'Без группы',frame:'Кадр',renameSprite:'Переименовать спрайт',deleteSprite:'Удалить спрайт',deleteSpriteMessage:name=>'Спрайт «'+name+'» и все его кадры будут удалены.',deleteFrame:'Удалить кадр',deleteFrameMessage:name=>'Кадр «'+name+'» будет удалён.',importProject:'Импорт проекта',import:'Импортировать',importPng:'Импорт PNG',importPngMessage:name=>'Файл «'+name+'» будет добавлен как новый спрайт. Цвета будут приведены к палитре редактора.',localVersions:'Локальные версии',chooseVersion:'Выберите версию для восстановления.',restore:'Восстановить',restoreVersion:'Восстановить версию',restoreMessage:'Текущий проект будет заменён выбранной локальной версией.'},
+ en:{save:'Save',continue:'Continue',newSprite:'New sprite',duplicateSprite:'Duplicate sprite',defaultSprite:'New sprite',copy:'copy',noGroup:'No group',frame:'Frame',renameSprite:'Rename sprite',deleteSprite:'Delete sprite',deleteSpriteMessage:name=>'Sprite “'+name+'” and all its frames will be deleted.',deleteFrame:'Delete frame',deleteFrameMessage:name=>'Frame “'+name+'” will be deleted.',importProject:'Import project',import:'Import',importPng:'Import PNG',importPngMessage:name=>'File “'+name+'” will be added as a new sprite. Colors will be mapped to the editor palette.',localVersions:'Local versions',chooseVersion:'Choose a version to restore.',restore:'Restore',restoreVersion:'Restore version',restoreMessage:'The current project will be replaced with the selected local version.'},
+ es:{save:'Guardar',continue:'Continuar',newSprite:'Nuevo sprite',duplicateSprite:'Duplicar sprite',defaultSprite:'Nuevo sprite',copy:'copia',noGroup:'Sin grupo',frame:'Fotograma',renameSprite:'Renombrar sprite',deleteSprite:'Eliminar sprite',deleteSpriteMessage:name=>'Se eliminarán el sprite «'+name+'» y todos sus fotogramas.',deleteFrame:'Eliminar fotograma',deleteFrameMessage:name=>'Se eliminará el fotograma «'+name+'».',importProject:'Importar proyecto',import:'Importar',importPng:'Importar PNG',importPngMessage:name=>'El archivo «'+name+'» se añadirá como un sprite nuevo. Los colores se adaptarán a la paleta.',localVersions:'Versiones locales',chooseVersion:'Elige una versión para restaurar.',restore:'Restaurar',restoreVersion:'Restaurar versión',restoreMessage:'El proyecto actual se reemplazará por la versión local seleccionada.'},
+ zh:{save:'保存',continue:'继续',newSprite:'新建精灵图',duplicateSprite:'复制精灵图',defaultSprite:'新精灵图',copy:'副本',noGroup:'未分组',frame:'帧',renameSprite:'重命名精灵图',deleteSprite:'删除精灵图',deleteSpriteMessage:name=>'将删除精灵图“'+name+'”及其所有帧。',deleteFrame:'删除帧',deleteFrameMessage:name=>'将删除帧“'+name+'”。',importProject:'导入项目',import:'导入',importPng:'导入 PNG',importPngMessage:name=>'文件“'+name+'”将作为新精灵图添加，颜色会映射到编辑器调色板。',localVersions:'本地版本',chooseVersion:'请选择要恢复的版本。',restore:'恢复',restoreVersion:'恢复版本',restoreMessage:'当前项目将被所选本地版本替换。'}
+};
+const dt=(key,...args)=>{const value=DIALOG_I18N[uiLanguage][key]??DIALOG_I18N.ru[key];return typeof value==='function'?value(...args):value;};
+const MESSAGE_I18N={
+ ru:{autosaved:'Автосохранено',saveFailed:'Не удалось сохранить',saveBlocked:'Браузер запретил локальное сохранение. Экспортируйте проект JSON.',dirty:'Есть несохранённые изменения',manualReason:'Ручное сохранение',versionSaved:'Версия проекта сохранена. Доступно до пяти локальных версий.',colorExists:'Этот цвет уже есть в палитре.',paletteFull:'Палитра заполнена: свободных ячеек больше нет.',colorAdded:v=>'Цвет '+v+' добавлен в палитру.',colorUsed:'Нельзя удалить цвет: он используется в рисунках проекта.',colorRemoved:v=>'Цвет '+v+' удалён из палитры.',opened:n=>'Открыт спрайт «'+n+'».',undoDone:'Изменение отменено.',redoDone:'Изменение повторено.',pixelsChanged:'Пиксели изменены.',spriteCreated:n=>'Создан спрайт «'+n+'».',spriteRenamed:'Спрайт переименован.',keepOne:'В проекте должен остаться хотя бы один спрайт.',spriteDeleted:'Спрайт удалён.',frameCopied:'Кадр продублирован.',frameAdded:'Добавлен пустой кадр.',framesReordered:'Порядок кадров изменён.',frameDeleted:'Кадр удалён.',spriteChanged:'Параметры спрайта изменены.',frameChanged:'Параметры кадра изменены.',frameExported:'PNG текущего кадра экспортирован.',sheetExported:'ZIP экспортирован: внутри spritesheet PNG и JSON-атлас.',projectExported:'Проект JSON экспортирован.',projectImported:'Проект импортирован. Проверьте результат.',importFailed:e=>'Не удалось импортировать проект: '+e,pngImported:'PNG импортирован как новый спрайт.',pngFailed:e=>'Не удалось импортировать PNG: '+e,noVersions:'Сохранённых версий пока нет.',versionRestored:'Версия восстановлена.',gridChanged:'Настройки сетки изменены.',onionChanged:'Режим соседнего кадра изменён.'},
+ en:{autosaved:'Autosaved',saveFailed:'Save failed',saveBlocked:'The browser blocked local saving. Export the project JSON.',dirty:'Unsaved changes',manualReason:'Manual save',versionSaved:'Project version saved. Up to five local versions are available.',colorExists:'This color is already in the palette.',paletteFull:'The palette is full: no free slots remain.',colorAdded:v=>'Color '+v+' added to the palette.',colorUsed:'This color cannot be removed because it is used in the project artwork.',colorRemoved:v=>'Color '+v+' removed from the palette.',opened:n=>'Opened sprite “'+n+'”.',undoDone:'Change undone.',redoDone:'Change redone.',pixelsChanged:'Pixels changed.',spriteCreated:n=>'Created sprite “'+n+'”.',spriteRenamed:'Sprite renamed.',keepOne:'The project must keep at least one sprite.',spriteDeleted:'Sprite deleted.',frameCopied:'Frame duplicated.',frameAdded:'Blank frame added.',framesReordered:'Frame order changed.',frameDeleted:'Frame deleted.',spriteChanged:'Sprite settings changed.',frameChanged:'Frame settings changed.',frameExported:'Current frame PNG exported.',sheetExported:'ZIP exported with the spritesheet PNG and JSON atlas.',projectExported:'Project JSON exported.',projectImported:'Project imported. Review the result.',importFailed:e=>'Could not import the project: '+e,pngImported:'PNG imported as a new sprite.',pngFailed:e=>'Could not import PNG: '+e,noVersions:'No saved versions yet.',versionRestored:'Version restored.',gridChanged:'Grid settings changed.',onionChanged:'Onion-skin setting changed.'},
+ es:{autosaved:'Guardado automáticamente',saveFailed:'Error al guardar',saveBlocked:'El navegador bloqueó el guardado local. Exporta el proyecto JSON.',dirty:'Cambios sin guardar',manualReason:'Guardado manual',versionSaved:'Versión del proyecto guardada. Hay hasta cinco versiones locales.',colorExists:'Este color ya está en la paleta.',paletteFull:'La paleta está llena: no quedan espacios libres.',colorAdded:v=>'Color '+v+' añadido a la paleta.',colorUsed:'No se puede eliminar este color porque se usa en los dibujos del proyecto.',colorRemoved:v=>'Color '+v+' eliminado de la paleta.',opened:n=>'Sprite «'+n+'» abierto.',undoDone:'Cambio deshecho.',redoDone:'Cambio rehecho.',pixelsChanged:'Píxeles modificados.',spriteCreated:n=>'Sprite «'+n+'» creado.',spriteRenamed:'Sprite renombrado.',keepOne:'El proyecto debe conservar al menos un sprite.',spriteDeleted:'Sprite eliminado.',frameCopied:'Fotograma duplicado.',frameAdded:'Fotograma vacío añadido.',framesReordered:'Orden de fotogramas modificado.',frameDeleted:'Fotograma eliminado.',spriteChanged:'Parámetros del sprite modificados.',frameChanged:'Parámetros del fotograma modificados.',frameExported:'PNG del fotograma actual exportado.',sheetExported:'ZIP exportado con el spritesheet PNG y el atlas JSON.',projectExported:'Proyecto JSON exportado.',projectImported:'Proyecto importado. Revisa el resultado.',importFailed:e=>'No se pudo importar el proyecto: '+e,pngImported:'PNG importado como un sprite nuevo.',pngFailed:e=>'No se pudo importar el PNG: '+e,noVersions:'Todavía no hay versiones guardadas.',versionRestored:'Versión restaurada.',gridChanged:'Configuración de la cuadrícula modificada.',onionChanged:'Configuración de papel cebolla modificada.'},
+ zh:{autosaved:'已自动保存',saveFailed:'保存失败',saveBlocked:'浏览器阻止了本地保存，请导出项目 JSON。',dirty:'有未保存的更改',manualReason:'手动保存',versionSaved:'项目版本已保存，最多保留五个本地版本。',colorExists:'该颜色已在调色板中。',paletteFull:'调色板已满，没有可用色位。',colorAdded:v=>'颜色 '+v+' 已添加到调色板。',colorUsed:'无法删除该颜色，因为项目图稿正在使用它。',colorRemoved:v=>'颜色 '+v+' 已从调色板删除。',opened:n=>'已打开精灵图“'+n+'”。',undoDone:'已撤销更改。',redoDone:'已重做更改。',pixelsChanged:'像素已更改。',spriteCreated:n=>'已创建精灵图“'+n+'”。',spriteRenamed:'精灵图已重命名。',keepOne:'项目中必须至少保留一个精灵图。',spriteDeleted:'精灵图已删除。',frameCopied:'帧已复制。',frameAdded:'已添加空白帧。',framesReordered:'帧顺序已更改。',frameDeleted:'帧已删除。',spriteChanged:'精灵图参数已更改。',frameChanged:'帧参数已更改。',frameExported:'当前帧 PNG 已导出。',sheetExported:'ZIP 已导出，其中包含精灵表 PNG 和 JSON 图集。',projectExported:'项目 JSON 已导出。',projectImported:'项目已导入，请检查结果。',importFailed:e=>'无法导入项目：'+e,pngImported:'PNG 已作为新精灵图导入。',pngFailed:e=>'无法导入 PNG：'+e,noVersions:'尚无已保存版本。',versionRestored:'版本已恢复。',gridChanged:'网格设置已更改。',onionChanged:'洋葱皮设置已更改。'}
+};
+const mt=(key,...args)=>{const value=MESSAGE_I18N[uiLanguage][key]??MESSAGE_I18N.ru[key];return typeof value==='function'?value(...args):value;};
+function applyLanguage(){
+ document.documentElement.lang=uiLanguage==='zh'?'zh-CN':uiLanguage;document.title=tr('title')+' — 16×16';
+ document.querySelectorAll('[data-i18n]').forEach(node=>{node.textContent=tr(node.dataset.i18n);});
+ document.querySelectorAll('[data-i18n-placeholder]').forEach(node=>{node.placeholder=tr(node.dataset.i18nPlaceholder);});
+ document.querySelectorAll('[data-i18n-aria]').forEach(node=>{node.setAttribute('aria-label',tr(node.dataset.i18nAria));});
+ document.getElementById('languageSelect').value=uiLanguage;
+ if(!playing)document.getElementById('playAnimation').textContent=tr('play');
+}
+function applyPreviewScale(){
+ const canvas=document.getElementById('animationPreview'),select=document.getElementById('previewScale');
+ canvas.style.setProperty('--preview-scale',previewScale);select.value=String(previewScale);
+}
+const EXAMPLE_PALETTE={
+ A:'#000000',
+ B:'#ebe599',
+ C:'#8dfffa',
+ E:'#fbddc3',
+ G:'#ffffff',
+ H:'#1b3b5b',
+ I:'#1c3ab7',
+ J:'#99caa9',
+ N:'#635011',
+ O:'#ea6e4c',
+ P:'#1b61cb',
+ Q:'#d8e13a',
+ S:'#c00000',
+ T:'#7515ef',
+ U:'#75a6ef',
+ V:'#73ffff',
+ W:'#3ca370',
+ X:'#8fde5d',
+ Y:'#d1ad51',
+ Z:'#c1c2d0',
+ a:'#fff97d',
+ b:'#ffffeb',
+ c:'#5a265e',
+ d:'#7f366b',
+ e:'#272736',
+ f:'#43424f',
+};
+const SARA_IDLE=[
+ [
+  '.....AAAAAA.....',
+  '....ABBBBBBA....',
+  '...ABBBBBBBBA...',
+  '...ABABAAABBA...',
+  '...AACAEEEAA....',
+  '...ABAEGHEA.....',
+  '..ABBAEEEEEA....',
+  '.ABBACAEEEA.....',
+  '.ABBACCAAACA....',
+  '.ABBBACCCCA.....',
+  '.ABBBAAAAAEA....',
+  '..AAAEEAIAAA....',
+  '....AAAAAA......',
+  '...AAJAJJA......',
+  '...AJJJAJJA.....',
+  '...AAAAAAAA.....',
+ ],
+ [
+  '....ABBBBBBA....',
+  '...ABBBBBBBBA...',
+  '...ABABAAABBA...',
+  '...AACAEEEAA....',
+  '...ABAEGHEA.....',
+  '..ABBAEEEEEA....',
+  '.ABBACAEEEA.....',
+  '.ABBACCAAACA....',
+  '.ABBBACCCCA.....',
+  '.ABBBAAAAAEA....',
+  '..AAAEEAIAAA....',
+  '....AAAAAA......',
+  '...AAJAJJA......',
+  '...AJJJAJJA.....',
+  '...AAAAAAAA.....',
+  '................',
+ ],
+ [
+  '.....AAAAAA.....',
+  '....ABBBBBBA....',
+  '...ABBBBBBBBA...',
+  '...ABABAAABBA...',
+  '...AACAEEEAA....',
+  '...ABAEGHEA.....',
+  '..ABBAEEEEEA....',
+  '.ABBACAEEEA.....',
+  '.ABBACCAAACA....',
+  '.ABBBACCCCA.....',
+  '.ABBBAAAAAEA....',
+  '..AAAEEAIAAA....',
+  '....AAAAAA......',
+  '...AAJAJJA......',
+  '...AJJJAJJA.....',
+  '...AAAAAAAA.....',
+ ],
+ [
+  '................',
+  '.....AAAAAA.....',
+  '....ABBBBBBA....',
+  '...ABBBBBBBBA...',
+  '...ABABAAABBA...',
+  '...AACAEEEAA....',
+  '...ABAEGHEA.....',
+  '..ABBAEEEEEA....',
+  '.ABBACAEEEA.....',
+  '.ABBACCAAACA....',
+  '.ABBBACCCCA.....',
+  '.ABBBAAAAAEA....',
+  '..AAAEEAIAAA....',
+  '....AAAAAA......',
+  '...AAJAJJA......',
+  '...AJJJAJJA.....',
+ ],
+];
+
+const PRINCESS_DANCE=[
+ [
+  '................',
+  '.....NNNNNN.....',
+  '....NNNONNNN....',
+  '....NNGOOGNN....',
+  '....NNPOOPNN....',
+  '....NNOOOONN....',
+  '...NNNQSSQNNN...',
+  '...NNTUOOUTNN...',
+  '.OTUUTUUUUTUUTOO',
+  'OOTUUTVUVUVUUTO.',
+  '....TVUVUVUT....',
+  '..TTUUUUUUUUTT..',
+  '.TUUVUUUUUUVUUT.',
+  'TUUUUVVVVVVUUUUT',
+  '.TTUUUUUUUUUUTT.',
+  '...TTTTTTTTTT...',
+ ],
+ [
+  '.....NNNNNN.....',
+  '....NNNONNNN....',
+  '....NNGOOGNN....',
+  '....NNPOOPNN....',
+  '....NNOOOONN....',
+  '...NNNQSSQNNN...',
+  '...NNTUOOUTNN...',
+  '.OTUUTUUUUTUUTOO',
+  'OOTUUTVUVUVUUTO.',
+  '....TVUVUVUT....',
+  '....TUUUUUUT....',
+  '..TTUUUUUUUUTT..',
+  '.TUUVUUUUUUVUUT.',
+  'TUUUUVVVVVVUUUUT',
+  '.TTUUUUUUUUUUTT.',
+  '...TTTTTTTTTT...',
+ ],
+ [
+  '................',
+  '......NNNN......',
+  '.....NNNOON.....',
+  '.....NNOOGN.....',
+  '....NNNOOP......',
+  '....NNNOOOO.....',
+  '...NNNNQOSS.....',
+  '...NNNUUUUT.....',
+  '....NNTOOUUT....',
+  '......TOOUUT....',
+  '.....TVUVUV.....',
+  '..TTTVUVUVTTTT..',
+  '.TUUVUUUUUUUVUT.',
+  'TUUUUVVVVVVVUUUT',
+  '.TTUUUUUUUUUUTT.',
+  '...TTTTTTTTTT...',
+ ],
+ [
+  '......NNNN......',
+  '.....NNNOON.....',
+  '.....NNOOGN.....',
+  '....NNNOOP......',
+  '....NNNOOOO.....',
+  '...NNNNQOSS.....',
+  '...NNNUUUUT.....',
+  '....NNTOOUUT....',
+  '......TOOUUT....',
+  '.....TVUVUV.....',
+  '....TVUVUVT.....',
+  '..TTTUUUUUUTTT..',
+  '.TUUVUUUUUUUVUT.',
+  'TUUUUVVVVVVVUUUT',
+  '.TTUUUUUUUUUUTT.',
+  '...TTTTTTTTTT...',
+ ],
+ [
+  '................',
+  '......NNNN......',
+  '.....NOONNN.....',
+  '.....NGOONN.....',
+  '......POONNN....',
+  '.....OOOONNN....',
+  '.....SSOQNNNN...',
+  '.....TUUUUNNN...',
+  '....TUUOOTNN....',
+  '....TUUOOT......',
+  '.....VUVUVT.....',
+  '..TTTTVUVUVTTT..',
+  '.TUVUUUUUUUVUUT.',
+  'TUUUVVVVVVVUUUUT',
+  '.TTUUUUUUUUUUTT.',
+  '...TTTTTTTTTT...',
+ ],
+ [
+  '......NNNN......',
+  '.....NOONNN.....',
+  '.....NGOONN.....',
+  '......POONNN....',
+  '.....OOOONNN....',
+  '.....SSOQNNNN...',
+  '.....TUUUUNNN...',
+  '....TUUOOTNN....',
+  '....TUUOOT......',
+  '.....VUVUVT.....',
+  '.....TVUVUVT....',
+  '..TTTUUUUUUTTT..',
+  '.TUVUUUUUUUVUUT.',
+  'TUUUVVVVVVVUUUUT',
+  '.TTUUUUUUUUUUTT.',
+  '...TTTTTTTTTT...',
+ ],
+ [
+  '................',
+  '.....NNNNNN.....',
+  '....NNNNNNNN....',
+  '....NNNNNNNN....',
+  '....NNNNNNNN....',
+  '....NNNNNNNN....',
+  '...NNNNNNNNNN...',
+  '...NNNNNNNNNN...',
+  'OOTNNNNNNNNNNTO.',
+  '.OTUUNNNNNNUUTOO',
+  '....TVUVUVUT....',
+  '..TTUUUUUUUUTT..',
+  '.TUUVUUUUUUVUUT.',
+  'TUUUUVVVVVVUUUUT',
+  '.TTUUUUUUUUUUTT.',
+  '...TTTTTTTTTT...',
+ ],
+ [
+  '.....NNNNNN.....',
+  '....NNNNNNNN....',
+  '....NNNNNNNN....',
+  '....NNNNNNNN....',
+  '....NNNNNNNN....',
+  '...NNNNNNNNNN...',
+  '...NNNNNNNNNN...',
+  'OOTNNNNNNNNNNTO.',
+  '.OTUUNNNNNNUUTOO',
+  '....TVUVUVUT....',
+  '....TUUUUUUT....',
+  '..TTUUUUUUUUTT..',
+  '.TUUVUUUUUUVUUT.',
+  'TUUUUVVVVVVUUUUT',
+  '.TTUUUUUUUUUUTT.',
+  '...TTTTTTTTTT...',
+ ],
+];
+
+const TRAVELER_IDLE=[
+ [
+  '....AAAAAA......',
+  '...AWXWWXXA.....',
+  '..AWXXXXXXWA....',
+  '.AWXXXXXXXXXA...',
+  '.AWXWXXXXXXXA...',
+  '.AWWWXXWXXXXA...',
+  '.AWWWWWYWWWXA...',
+  '.AWWZAYaaZAWA...',
+  '..AWbAaaabAWA...',
+  '...AYaaaaaYA....',
+  '..AcAccbbcA.....',
+  '.AdcccdbbcAA....',
+  '.AaYAcdbbdAYA...',
+  '.AaaAeeeeeAYA...',
+  '..AAeeAAAeAA....',
+  '...AfA..AfA.....',
+ ],
+ [
+  '................',
+  '....AAAAAA......',
+  '...AWXWWXXA.....',
+  '..AWXXXXXXWA....',
+  '.AWXXXXXXXXXA...',
+  '.AWXWXXXXXXXA...',
+  '.AWWWXXWXXXXA...',
+  '.AWWWWWYWWWXA...',
+  '.AWWZAYaaZAWA...',
+  '..AWbAaaabAWA...',
+  '..AAYaaaaaYA....',
+  '.AdccccbbcAA....',
+  '.AaYAcdbbcAYA...',
+  '.AaaAcdbbdAYA...',
+  '..AAeeeeeeAA....',
+  '...AfeAAAfA.....',
+ ],
+ [
+  '................',
+  '.....AAAAAA.....',
+  '....AWXWWXXA....',
+  '...AWXXXXXXWA...',
+  '..AWXXXXXXXXXA..',
+  '..AWXWXXXXXXXA..',
+  '..AWWWXXWXXXXA..',
+  '..AWWWWWYWWWXA..',
+  '..AWWZAYaaZAWA..',
+  '...AWbAaaabAWA..',
+  '....AYaaaaaYA...',
+  '...AcAccbbcA....',
+  '..AdcccdbbcAA...',
+  '..AaYAcdbbdAYA..',
+  '..AaaAeeeeeAYA..',
+  '...AAfeAAAfAA...',
+ ],
+];
+
+const STORAGE_KEY='pixel-character-studio-v2';
+const SNAPSHOTS_KEY='pixel-character-studio-snapshots-v1';
+const LEGACY_KEY='pixel-souls-16x16-studio-v1';
+const MAX_SNAPSHOTS=5;
+const blankRows=()=>Array(SIZE).fill('.'.repeat(SIZE));
+const clone=value=>JSON.parse(JSON.stringify(value));
+const uid=prefix=>prefix+'-'+(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2));
+const paletteColors=data=>({...BASE_COLORS,...(data?.palette||project?.palette||{})});
+const validRows=(rows,colors=BASE_COLORS)=>Array.isArray(rows)&&rows.length===SIZE&&rows.every(row=>typeof row==='string'&&row.length===SIZE&&[...row].every(c=>c==='.'||Object.hasOwn(colors,c)));
+const safeFileName=value=>(value||'sprite').trim().replace(/[^\p{L}\p{N}_-]+/gu,'-').replace(/^-+|-+$/g,'').slice(0,48)||'sprite';
+
+function seedProject(){
+ const assets=createExampleAssets();
+ return {type:'pixel-character-studio',version:2,gridSize:SIZE,palette:{...EXAMPLE_PALETTE},assets,selectedAssetId:assets[0].id,selectedFrameId:assets[0].frames[0].id,gridVisible:true,onionSkin:false,updatedAt:new Date().toISOString()};
+}
+
+function createExampleAssets(){
+ return [
+  {id:'example-sara-idle',name:'Sara · idle',group:'Free examples',author:'nightgane',license:'CC0',source:'https://opengameart.org/content/oga-sara-16x16-1bit-color',frames:SARA_IDLE.map((pixels,index)=>({id:'example-sara-frame-'+(index+1),name:'Idle '+(index+1),duration:180,pixels:pixels.slice()}))},
+  {id:'example-princess-dance',name:'Miss Princess · dance',group:'Free examples',author:'qubodup',license:'CC0',source:'https://opengameart.org/content/miss-princess-animated-16x16',frames:PRINCESS_DANCE.map((pixels,index)=>({id:'example-princess-frame-'+(index+1),name:'Dance '+(index+1),duration:150,pixels:pixels.slice()}))},
+  {id:'example-green-traveler',name:'Green Traveler · idle',group:'Free examples',author:'Meafabulis',license:'Free use',source:'https://meafabulis.itch.io/pixel-art-sprites-free-animated-character-asset',frames:TRAVELER_IDLE.map((pixels,index)=>({id:'example-traveler-frame-'+(index+1),name:'Idle '+(index+1),duration:220,pixels:pixels.slice()}))}
+ ];
+}
+
+function ensureExampleAssets(data){
+ const existing=new Set(data.assets.map(asset=>asset.id));
+ const missing=createExampleAssets().filter(asset=>!existing.has(asset.id));
+ let changed=false;
+ for(const asset of data.assets)if(asset.id.startsWith('example-')&&asset.group==='CC0 examples'){asset.group='Free examples';changed=true;}
+ if(!missing.length)return changed;
+ const mapping={},allColors={...BASE_COLORS,...data.palette};
+ const nearestKey=hex=>{
+  const rgb=[1,3,5].map(index=>parseInt(hex.slice(index,index+2),16));let best='K',bestDistance=Infinity;
+  for(const [key,value] of Object.entries(allColors)){const next=[1,3,5].map(index=>parseInt(value.slice(index,index+2),16));const distance=next.reduce((sum,value,index)=>sum+(value-rgb[index])**2,0);if(distance<bestDistance){bestDistance=distance;best=key;}}
+  return best;
+ };
+ for(const [sourceKey,hex] of Object.entries(EXAMPLE_PALETTE)){
+  const same=Object.entries(allColors).find(([,value])=>value.toLowerCase()===hex);
+  if(same){mapping[sourceKey]=same[0];continue;}
+  const free=[sourceKey,...PALETTE_KEYS].find(key=>!Object.hasOwn(BASE_COLORS,key)&&!Object.hasOwn(data.palette,key));
+  if(free&&Object.keys(data.palette).length<50){data.palette[free]=hex;allColors[free]=hex;mapping[sourceKey]=free;}else mapping[sourceKey]=nearestKey(hex);
+ }
+ for(const asset of missing)for(const frame of asset.frames)frame.pixels=frame.pixels.map(row=>[...row].map(code=>code==='.'?'.':mapping[code]).join(''));
+ data.assets.push(...missing);return true;
+}
+
+function validateProject(data){
+ if(!data||data.type!=='pixel-character-studio'||data.version!==2||data.gridSize!==SIZE||!Array.isArray(data.assets)||!data.assets.length||data.assets.length>500)throw Error('Неподдерживаемый формат проекта');
+ const customPalette={};
+ if(data.palette&&typeof data.palette==='object'&&!Array.isArray(data.palette))for(const [key,value] of Object.entries(data.palette)){
+  if(key.length===1&&PALETTE_KEYS.includes(key)&&!Object.hasOwn(BASE_COLORS,key)&&/^#[0-9a-f]{6}$/i.test(value)&&Object.keys(customPalette).length<50)customPalette[key]=value.toLowerCase();
+ }
+ data.palette=customPalette;const colors=paletteColors(data);
+ const assetIds=new Set(),frameIds=new Set();
+ for(const asset of data.assets){
+  if(!asset||typeof asset.id!=='string'||assetIds.has(asset.id)||typeof asset.name!=='string'||!asset.name.trim()||!Array.isArray(asset.frames)||!asset.frames.length||asset.frames.length>200)throw Error('Повреждён список спрайтов');
+  assetIds.add(asset.id);
+  for(const frame of asset.frames){
+   if(!frame||typeof frame.id!=='string'||frameIds.has(frame.id)||typeof frame.name!=='string'||!validRows(frame.pixels,colors))throw Error('Повреждены кадры спрайта «'+asset.name+'»');
+   frameIds.add(frame.id);
+   frame.duration=Math.max(25,Math.min(5000,Number(frame.duration)||125));
+  }
+  asset.group=String(asset.group||'Без группы').slice(0,40);
+  asset.name=asset.name.trim().slice(0,64);
+ }
+ if(!assetIds.has(data.selectedAssetId))data.selectedAssetId=data.assets[0].id;
+ const selected=data.assets.find(asset=>asset.id===data.selectedAssetId);
+ if(!selected.frames.some(frame=>frame.id===data.selectedFrameId))data.selectedFrameId=selected.frames[0].id;
+ return data;
+}
+
+function migrateLegacy(){
+ try{
+  const raw=localStorage.getItem(LEGACY_KEY);if(!raw)return null;
+  const legacy=JSON.parse(raw),next=seedProject();
+  if(legacy.presets&&typeof legacy.presets==='object'){
+   for(const [id,rows] of Object.entries(legacy.presets)){
+    const asset=next.assets.find(item=>item.id==='preset-'+id);
+    if(asset&&validRows(rows))asset.frames[0].pixels=rows.slice();
+   }
+  }
+  const replaceFrames=(assetId,rows)=>{
+   const asset=next.assets.find(item=>item.id===assetId);
+   if(asset&&Array.isArray(rows)&&rows.every(validRows))asset.frames=rows.map((pixels,index)=>({id:uid('frame'),name:'Кадр '+(index+1),duration:assetId==='horse-gallop'?180:200,pixels:pixels.slice()}));
+  };
+  replaceFrames('horse-gallop',legacy.horseFrames);
+  const longcoat=[...(legacy.longcoatIdle||[]),...(legacy.longcoatWalk||[])];if(longcoat.length)replaceFrames('longcoat-animation',longcoat);
+  const redcloak=[...(legacy.redcloakIdle||[]),...(legacy.redcloakWalk||[])];if(redcloak.length)replaceFrames('redcloak-animation',redcloak);
+  return next;
+ }catch{return null;}
+}
+
+let project=seedProject();
+try{
+ const saved=localStorage.getItem(STORAGE_KEY);
+ project=saved?validateProject(JSON.parse(saved)):(migrateLegacy()||project);
+}catch(err){console.warn('Не удалось восстановить проект:',err);}
+ensureExampleAssets(project);
+let selectedColor='K';
+let drawing=false,erasing=false,dirty=false,autosaveTimer=0,playing=false,playIndex=0,playTimer=0;
+const undoStacks=new Map(),redoStacks=new Map();
+const editor=document.getElementById('editor');
+const ctx=editor.getContext('2d',{alpha:false});
+const preview=document.getElementById('animationPreview');
+const previewCtx=preview.getContext('2d');
+
+const currentAsset=()=>project.assets.find(asset=>asset.id===project.selectedAssetId)||project.assets[0];
+const currentFrame=()=>{
+ const asset=currentAsset();
+ return asset.frames.find(frame=>frame.id===project.selectedFrameId)||asset.frames[0];
+};
+function showStudioDialog({title,message='',value='',options=null,confirmText=null,danger=false,confirmOnly=false}){
+ const dialog=document.getElementById('studioModal'),input=document.getElementById('modalInput'),select=document.getElementById('modalSelect'),confirmButton=document.getElementById('modalConfirm');
+ document.getElementById('modalTitle').textContent=title;document.getElementById('modalMessage').textContent=message;
+ input.hidden=Boolean(options)||confirmOnly;select.hidden=!options;input.value=value;
+ input.onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();dialog.close('confirm');}};
+ select.replaceChildren();if(options)for(const optionData of options){const option=document.createElement('option');option.value=String(optionData.value);option.textContent=optionData.label;select.append(option);}
+ confirmButton.textContent=confirmText||dt('continue');confirmButton.classList.toggle('danger-confirm',danger);
+ return new Promise(resolve=>{
+  dialog.addEventListener('close',()=>resolve(dialog.returnValue==='confirm'?(options?select.value:confirmOnly?true:input.value):null),{once:true});
+  dialog.showModal();if(!input.hidden)setTimeout(()=>{input.focus();input.select();},0);
+ });
+}
+const askText=(title,value,message='')=>showStudioDialog({title,message,value,confirmText:dt('save')});
+const askConfirm=(title,message,confirmText=null,danger=false)=>showStudioDialog({title,message,confirmText:confirmText||dt('continue'),danger,confirmOnly:true});
+const frameStack=(store,id)=>{if(!store.has(id))store.set(id,[]);return store.get(id);};
+const frameCountLabel=count=>uiLanguage==='ru'?count+' '+(count%10===1&&count%100!==11?'кадр':count%10>=2&&count%10<=4&&(count%100<10||count%100>=20)?'кадра':'кадров'):uiLanguage==='zh'?count+' '+tr('frameUnit'):count+' '+tr('frameUnit')+(count===1?'':'s');
+function status(message){document.getElementById('status').textContent=message;}
+function setSaveBadge(text,isDirty=false){const badge=document.getElementById('saveBadge');badge.textContent=text;badge.classList.toggle('dirty',isDirty);}
+function projectData(){project.updatedAt=new Date().toISOString();return clone(project);}
+function saveLocal(){
+ clearTimeout(autosaveTimer);
+ try{
+  localStorage.setItem(STORAGE_KEY,JSON.stringify(projectData()));
+  dirty=false;setSaveBadge(mt('autosaved')+' '+new Date().toLocaleTimeString(uiLanguage==='zh'?'zh-CN':uiLanguage,{hour:'2-digit',minute:'2-digit'}));
+  return true;
+ }catch(err){setSaveBadge(mt('saveFailed'),true);status(mt('saveBlocked'));return false;}
+}
+function markDirty(message){
+ dirty=true;setSaveBadge(mt('dirty'),true);if(message)status(message);
+ clearTimeout(autosaveTimer);autosaveTimer=setTimeout(saveLocal,450);
+}
+function saveSnapshot(reason){
+ let snapshots=[];try{snapshots=JSON.parse(localStorage.getItem(SNAPSHOTS_KEY)||'[]');}catch{}
+ snapshots.unshift({savedAt:new Date().toISOString(),reason,project:projectData()});
+ localStorage.setItem(SNAPSHOTS_KEY,JSON.stringify(snapshots.slice(0,MAX_SNAPSHOTS)));
+}
+function manualSave(){saveLocal();saveSnapshot(mt('manualReason'));status(mt('versionSaved'));}
+
+function drawRows(context,rows,alpha=1){
+ const colors=paletteColors();
+ context.save();context.globalAlpha=alpha;context.clearRect(0,0,SIZE,SIZE);
+ for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++){const code=rows[y][x];if(code!=='.'){context.fillStyle=colors[code];context.fillRect(x,y,1,1);}}
+ context.restore();
+}
+function renderEditor(){
+ const frame=currentFrame(),asset=currentAsset(),index=asset.frames.indexOf(frame);
+ const colors=paletteColors();
+ ctx.imageSmoothingEnabled=false;ctx.fillStyle='#b9c2cc';ctx.fillRect(0,0,512,512);
+ if(project.onionSkin&&asset.frames.length>1){
+  const prev=asset.frames[(index-1+asset.frames.length)%asset.frames.length];
+  for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++){const code=prev.pixels[y][x];if(code!=='.'){ctx.globalAlpha=.18;ctx.fillStyle=colors[code];ctx.fillRect(x*32,y*32,32,32);}}
+  ctx.globalAlpha=1;
+ }
+ for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++){const code=frame.pixels[y][x];if(code!=='.'){ctx.fillStyle=colors[code];ctx.fillRect(x*32,y*32,32,32);}}
+ if(project.gridVisible){ctx.strokeStyle='rgba(30,38,46,.34)';ctx.lineWidth=1;ctx.beginPath();for(let i=0;i<=SIZE;i++){const p=i*32+.5;ctx.moveTo(p,0);ctx.lineTo(p,512);ctx.moveTo(0,p);ctx.lineTo(512,p);}ctx.stroke();}
+ renderPreview();
+}
+function renderPreview(){
+ const asset=currentAsset();
+ const frame=playing?asset.frames[playIndex%asset.frames.length]:currentFrame();
+ drawRows(previewCtx,frame.pixels);
+}
+function makePalette(){
+ const root=document.getElementById('palette');root.replaceChildren();
+ const colors=paletteColors(),options=[['.','',tr('eraser')],...Object.entries(colors).map(([key,value])=>[key,value,COLOR_NAME_I18N[uiLanguage][key]||tr('customColor')])];
+ for(const [key,color,name] of options){
+  const button=document.createElement('button');button.type='button';button.className='swatch'+(key==='.'?' eraser':'')+(selectedColor===key?' active':'');button.style.backgroundColor=color;button.title=name+(color?' '+color:'');button.setAttribute('aria-label',name);button.setAttribute('aria-pressed',selectedColor===key?'true':'false');
+  button.addEventListener('click',()=>{selectedColor=key;if(color)document.getElementById('customColor').value=color;makePalette();});root.append(button);
+ }
+ document.getElementById('removeColor').disabled=!Object.hasOwn(project.palette,selectedColor);
+}
+function addCustomColor(){
+ const value=document.getElementById('customColor').value.toLowerCase(),colors=paletteColors();
+ const existing=Object.entries(colors).find(([,hex])=>hex.toLowerCase()===value);
+ if(existing){selectedColor=existing[0];makePalette();status(mt('colorExists'));return;}
+ const key=[...PALETTE_KEYS].find(candidate=>!Object.hasOwn(colors,candidate));
+ if(!key){status(mt('paletteFull'));return;}
+ project.palette[key]=value;selectedColor=key;makePalette();markDirty(mt('colorAdded',value));
+}
+function removeCustomColor(){
+ if(!Object.hasOwn(project.palette,selectedColor))return;
+ const used=project.assets.some(asset=>asset.frames.some(frame=>frame.pixels.some(row=>row.includes(selectedColor))));
+ if(used){status(mt('colorUsed'));return;}
+ const value=project.palette[selectedColor];delete project.palette[selectedColor];selectedColor='K';makePalette();markDirty(mt('colorRemoved',value));
+}
+function renderGroupFilter(){
+ const select=document.getElementById('groupFilter'),current=select.value;
+ const groups=[...new Set(project.assets.map(asset=>asset.group||'Без группы'))].sort((a,b)=>a.localeCompare(b,'ru'));
+ select.innerHTML='<option value="">'+tr('allGroups')+'</option>';
+ for(const group of groups){const option=document.createElement('option');option.value=group;option.textContent=group;select.append(option);}
+ select.value=groups.includes(current)?current:'';
+}
+function renderAssetList(){
+ const root=document.getElementById('assetList');root.replaceChildren();
+ const query=document.getElementById('assetSearch').value.trim().toLocaleLowerCase('ru');
+ const group=document.getElementById('groupFilter').value;
+ const matches=project.assets.filter(asset=>(!group||asset.group===group)&&(!query||(asset.name+' '+asset.group).toLocaleLowerCase('ru').includes(query)));
+ const grouped=new Map();
+ for(const asset of matches){const key=asset.group||'Без группы';if(!grouped.has(key))grouped.set(key,[]);grouped.get(key).push(asset);}
+ for(const [name,assets] of grouped){
+  const heading=document.createElement('div');heading.className='asset-group';heading.textContent=name;root.append(heading);
+  for(const asset of assets){
+   const button=document.createElement('button');button.type='button';button.className='asset-item'+(asset.id===project.selectedAssetId?' active':'');
+   const strong=document.createElement('strong');strong.textContent=asset.name;
+   const small=document.createElement('small');small.textContent=frameCountLabel(asset.frames.length);
+   button.append(strong,small);button.addEventListener('click',()=>selectAsset(asset.id));root.append(button);
+  }
+ }
+ if(!matches.length){const empty=document.createElement('div');empty.className='empty';empty.textContent=tr('empty');root.append(empty);}
+}
+function renderFrames(){
+ const root=document.getElementById('frameStrip');root.replaceChildren();
+ const asset=currentAsset();
+ asset.frames.forEach((frame,index)=>{
+  const button=document.createElement('button');button.type='button';button.className='frame-card'+(frame.id===project.selectedFrameId?' active':'');
+  const canvas=document.createElement('canvas');canvas.width=canvas.height=SIZE;drawRows(canvas.getContext('2d'),frame.pixels);
+  const label=document.createElement('small');label.textContent=(index+1)+'. '+frame.name;
+  const duration=document.createElement('small');duration.textContent=frame.duration+' '+tr('ms');
+  button.append(canvas,label,duration);button.addEventListener('click',()=>selectFrame(frame.id));root.append(button);
+ });
+ const index=asset.frames.findIndex(frame=>frame.id===project.selectedFrameId);
+ document.getElementById('moveFrameLeft').disabled=index<=0;
+ document.getElementById('moveFrameRight').disabled=index>=asset.frames.length-1;
+ document.getElementById('deleteFrame').disabled=asset.frames.length<=1;
+}
+function renderInspector(){
+ const asset=currentAsset(),frame=currentFrame();
+ document.getElementById('assetName').value=asset.name;
+ document.getElementById('assetGroup').value=asset.group||'';
+ document.getElementById('frameName').value=frame.name;
+ document.getElementById('frameDuration').value=String(frame.duration);
+ document.getElementById('grid').checked=project.gridVisible;
+ document.getElementById('onionSkin').checked=project.onionSkin;
+}
+function renderAll(){renderGroupFilter();renderAssetList();renderFrames();renderInspector();renderEditor();updateHistoryButtons();}
+function updateHistoryButtons(){
+ const id=currentFrame().id;document.getElementById('undo').disabled=!frameStack(undoStacks,id).length;document.getElementById('redo').disabled=!frameStack(redoStacks,id).length;
+}
+function selectAsset(id){
+ stopAnimation();const asset=project.assets.find(item=>item.id===id);if(!asset)return;
+ project.selectedAssetId=id;project.selectedFrameId=asset.frames[0].id;renderAll();markDirty(mt('opened',asset.name));
+}
+function selectFrame(id){stopAnimation();project.selectedFrameId=id;renderFrames();renderInspector();renderEditor();updateHistoryButtons();}
+function remember(){
+ const frame=currentFrame(),stack=frameStack(undoStacks,frame.id);stack.push(frame.pixels.slice());if(stack.length>100)stack.shift();redoStacks.set(frame.id,[]);updateHistoryButtons();
+}
+function restoreHistory(from,to,message){
+ const frame=currentFrame(),stack=frameStack(from,frame.id);if(!stack.length)return;
+ frameStack(to,frame.id).push(frame.pixels.slice());frame.pixels=stack.pop();renderFrames();renderEditor();updateHistoryButtons();markDirty(message);
+}
+function undo(){restoreHistory(undoStacks,redoStacks,mt('undoDone'));}
+function redo(){restoreHistory(redoStacks,undoStacks,mt('redoDone'));}
+
+function at(event){const rect=editor.getBoundingClientRect();return [Math.max(0,Math.min(SIZE-1,Math.floor((event.clientX-rect.left)*SIZE/rect.width))),Math.max(0,Math.min(SIZE-1,Math.floor((event.clientY-rect.top)*SIZE/rect.height)))];}
+function paint(event){
+ const [x,y]=at(event),frame=currentFrame(),value=erasing?'.':selectedColor;if(frame.pixels[y][x]===value)return;
+ frame.pixels[y]=frame.pixels[y].slice(0,x)+value+frame.pixels[y].slice(x+1);renderEditor();renderFrames();markDirty(mt('pixelsChanged'));
+}
+editor.addEventListener('pointerdown',event=>{if(event.button!==0&&event.button!==2)return;event.preventDefault();remember();drawing=true;erasing=event.button===2;editor.setPointerCapture(event.pointerId);paint(event);});
+editor.addEventListener('pointermove',event=>{if(drawing)paint(event);});
+editor.addEventListener('pointerup',()=>drawing=false);
+editor.addEventListener('pointercancel',()=>drawing=false);
+editor.addEventListener('lostpointercapture',()=>drawing=false);
+editor.addEventListener('contextmenu',event=>event.preventDefault());
+
+async function newAsset(copyCurrent=false){
+ const source=copyCurrent?currentAsset():null;
+ const answer=await askText(copyCurrent?dt('duplicateSprite'):dt('newSprite'),source?source.name+' '+dt('copy'):dt('defaultSprite'));const name=answer?.trim();if(!name)return;
+ const asset={id:uid('asset'),name:name.slice(0,64),group:source?source.group:dt('noGroup'),frames:source?source.frames.map(frame=>({...clone(frame),id:uid('frame')})):[{id:uid('frame'),name:dt('frame')+' 1',duration:125,pixels:blankRows()}]};
+ project.assets.push(asset);project.selectedAssetId=asset.id;project.selectedFrameId=asset.frames[0].id;renderAll();markDirty(mt('spriteCreated',asset.name));
+}
+async function renameAsset(){
+ const asset=currentAsset(),answer=await askText(dt('renameSprite'),asset.name),name=answer?.trim();if(!name)return;asset.name=name.slice(0,64);renderAll();markDirty(mt('spriteRenamed'));
+}
+async function deleteAsset(){
+ if(project.assets.length<=1){status(mt('keepOne'));return;}
+ const asset=currentAsset();if(!await askConfirm(dt('deleteSprite'),dt('deleteSpriteMessage',asset.name),tr('delete'),true))return;
+ const index=project.assets.indexOf(asset);project.assets.splice(index,1);const next=project.assets[Math.max(0,index-1)];project.selectedAssetId=next.id;project.selectedFrameId=next.frames[0].id;renderAll();markDirty(mt('spriteDeleted'));
+}
+function addFrame(copyCurrent=false){
+ const asset=currentAsset(),source=currentFrame();
+ const frame={id:uid('frame'),name:copyCurrent?source.name+' '+dt('copy'):dt('frame')+' '+(asset.frames.length+1),duration:source.duration,pixels:copyCurrent?source.pixels.slice():blankRows()};
+ const index=asset.frames.indexOf(source);asset.frames.splice(index+1,0,frame);project.selectedFrameId=frame.id;renderAll();markDirty(copyCurrent?mt('frameCopied'):mt('frameAdded'));
+}
+function moveFrame(direction){
+ const asset=currentAsset(),index=asset.frames.findIndex(frame=>frame.id===project.selectedFrameId),target=index+direction;if(target<0||target>=asset.frames.length)return;
+ [asset.frames[index],asset.frames[target]]=[asset.frames[target],asset.frames[index]];renderFrames();markDirty(mt('framesReordered'));
+}
+async function deleteFrame(){
+ const asset=currentAsset();if(asset.frames.length<=1)return;const frame=currentFrame();if(!await askConfirm(dt('deleteFrame'),dt('deleteFrameMessage',frame.name),tr('delete'),true))return;
+ const index=asset.frames.indexOf(frame);asset.frames.splice(index,1);project.selectedFrameId=asset.frames[Math.max(0,index-1)].id;renderAll();markDirty(mt('frameDeleted'));
+}
+function updateAssetFields(){
+ const asset=currentAsset();asset.name=document.getElementById('assetName').value.trim().slice(0,64)||dt('defaultSprite');asset.group=document.getElementById('assetGroup').value.trim().slice(0,40)||dt('noGroup');renderGroupFilter();renderAssetList();markDirty(mt('spriteChanged'));
+}
+function updateFrameFields(){
+ const frame=currentFrame();frame.name=document.getElementById('frameName').value.trim().slice(0,64)||dt('frame');frame.duration=Math.max(25,Math.min(5000,Number(document.getElementById('frameDuration').value)||125));renderFrames();markDirty(mt('frameChanged'));
+}
+
+function animationStep(){
+ if(!playing)return;const asset=currentAsset();playIndex%=asset.frames.length;renderPreview();
+ playTimer=setTimeout(()=>{playIndex=(playIndex+1)%asset.frames.length;animationStep();},asset.frames[playIndex].duration);
+}
+function toggleAnimation(){
+ if(playing)return stopAnimation();playing=true;playIndex=Math.max(0,currentAsset().frames.indexOf(currentFrame()));
+ const button=document.getElementById('playAnimation');button.textContent=tr('pause');button.setAttribute('aria-pressed','true');animationStep();
+}
+function stopAnimation(){
+ playing=false;clearTimeout(playTimer);const button=document.getElementById('playAnimation');button.textContent=tr('play');button.setAttribute('aria-pressed','false');renderPreview();
+}
+
+function downloadBlob(blob,name){
+ const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=name;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function canvasForRows(rows){
+ const canvas=document.createElement('canvas');canvas.width=canvas.height=SIZE;drawRows(canvas.getContext('2d'),rows);return canvas;
+}
+function exportFramePng(){
+ const name=safeFileName(currentAsset().name+'-'+currentFrame().name);canvasForRows(currentFrame().pixels).toBlob(blob=>blob&&downloadBlob(blob,name+'.png'),'image/png');status(mt('frameExported'));
+}
+const crcTable=(()=>{const table=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=(c&1)?0xedb88320^(c>>>1):c>>>1;table[n]=c>>>0;}return table;})();
+function crc32(bytes){let crc=0xffffffff;for(const byte of bytes)crc=crcTable[(crc^byte)&255]^(crc>>>8);return (crc^0xffffffff)>>>0;}
+function joinBytes(parts){const length=parts.reduce((sum,part)=>sum+part.length,0),result=new Uint8Array(length);let offset=0;for(const part of parts){result.set(part,offset);offset+=part.length;}return result;}
+function zipStore(entries){
+ const encoder=new TextEncoder(),locals=[],centrals=[];let offset=0;
+ for(const entry of entries){const name=encoder.encode(entry.name),data=entry.data,crc=crc32(data),local=new Uint8Array(30+name.length),lv=new DataView(local.buffer);lv.setUint32(0,0x04034b50,true);lv.setUint16(4,20,true);lv.setUint32(14,crc,true);lv.setUint32(18,data.length,true);lv.setUint32(22,data.length,true);lv.setUint16(26,name.length,true);local.set(name,30);locals.push(local,data);
+  const central=new Uint8Array(46+name.length),cv=new DataView(central.buffer);cv.setUint32(0,0x02014b50,true);cv.setUint16(4,20,true);cv.setUint16(6,20,true);cv.setUint32(16,crc,true);cv.setUint32(20,data.length,true);cv.setUint32(24,data.length,true);cv.setUint16(28,name.length,true);cv.setUint32(42,offset,true);central.set(name,46);centrals.push(central);offset+=local.length+data.length;}
+ const centralSize=centrals.reduce((sum,part)=>sum+part.length,0),end=new Uint8Array(22),ev=new DataView(end.buffer);ev.setUint32(0,0x06054b50,true);ev.setUint16(8,entries.length,true);ev.setUint16(10,entries.length,true);ev.setUint32(12,centralSize,true);ev.setUint32(16,offset,true);return new Blob([...locals,...centrals,end],{type:'application/zip'});
+}
+async function exportSheet(){
+ const asset=currentAsset(),canvas=document.createElement('canvas');canvas.width=SIZE*asset.frames.length;canvas.height=SIZE;const sheetCtx=canvas.getContext('2d');
+ asset.frames.forEach((frame,index)=>drawRowsOffset(sheetCtx,frame.pixels,index*SIZE));
+ const base=safeFileName(asset.name),meta={type:'pixel-character-spritesheet',version:1,image:base+'-spritesheet.png',frameWidth:SIZE,frameHeight:SIZE,frames:asset.frames.map((frame,index)=>({id:frame.id,name:frame.name,x:index*SIZE,y:0,width:SIZE,height:SIZE,duration:frame.duration}))};
+ const pngBlob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));if(!pngBlob)throw Error('Не удалось создать PNG');
+ const zip=zipStore([{name:base+'-spritesheet.png',data:new Uint8Array(await pngBlob.arrayBuffer())},{name:base+'-spritesheet.json',data:new TextEncoder().encode(JSON.stringify(meta,null,2))}]);
+ downloadBlob(zip,base+'-spritesheet.zip');status(mt('sheetExported'));
+}
+function drawRowsOffset(context,rows,offsetX){
+ const colors=paletteColors();for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++){const code=rows[y][x];if(code!=='.'){context.fillStyle=colors[code];context.fillRect(offsetX+x,y,1,1);}}
+}
+function exportProject(){downloadBlob(new Blob([JSON.stringify(projectData(),null,2)],{type:'application/json'}),'pixel-character-project.json');status(mt('projectExported'));}
+async function importProjectFile(file){
+ if(!file)return;
+ try{
+  const incoming=validateProject(JSON.parse(await file.text())),existingIds=new Set(project.assets.map(asset=>asset.id)),conflicts=incoming.assets.filter(asset=>existingIds.has(asset.id)).length,frameCount=incoming.assets.reduce((sum,asset)=>sum+asset.frames.length,0);
+  if(!await askConfirm(dt('importProject'),tr('sprites')+': '+incoming.assets.length+'\n'+tr('frames')+': '+frameCount+'\nID conflicts: '+conflicts,dt('import')))return;
+  saveSnapshot(dt('importProject')+' '+file.name);project=incoming;undoStacks.clear();redoStacks.clear();renderAll();markDirty(mt('projectImported'));
+ }catch(err){status(mt('importFailed',err.message));}
+ finally{document.getElementById('projectFile').value='';}
+}
+async function importPngFile(file){
+ if(!file)return;
+ try{
+  const bitmap=await createImageBitmap(file);if(bitmap.width!==SIZE||bitmap.height!==SIZE)throw Error('нужен PNG ровно 16×16 пикселей');
+  if(!await askConfirm(dt('importPng'),dt('importPngMessage',file.name),dt('import')))return;
+  const canvas=document.createElement('canvas');canvas.width=canvas.height=SIZE;const imageCtx=canvas.getContext('2d',{willReadFrequently:true});imageCtx.drawImage(bitmap,0,0);const data=imageCtx.getImageData(0,0,SIZE,SIZE).data;
+  const palette=Object.entries(paletteColors()).map(([key,hex])=>({key,r:parseInt(hex.slice(1,3),16),g:parseInt(hex.slice(3,5),16),b:parseInt(hex.slice(5,7),16)})),rows=[];
+  for(let y=0;y<SIZE;y++){let row='';for(let x=0;x<SIZE;x++){const i=(y*SIZE+x)*4;if(data[i+3]<96){row+='.';continue;}let best=palette[0],distance=Infinity;for(const color of palette){const next=(color.r-data[i])**2+(color.g-data[i+1])**2+(color.b-data[i+2])**2;if(next<distance){distance=next;best=color;}}row+=best.key;}rows.push(row);}
+  const asset={id:uid('asset'),name:file.name.replace(/\.png$/i,'').slice(0,64)||dt('importPng'),group:dt('import'),frames:[{id:uid('frame'),name:dt('frame')+' 1',duration:125,pixels:rows}]};
+  project.assets.push(asset);project.selectedAssetId=asset.id;project.selectedFrameId=asset.frames[0].id;renderAll();markDirty(mt('pngImported'));
+ }catch(err){status(mt('pngFailed',err.message));}
+ finally{document.getElementById('pngFile').value='';}
+}
+async function restoreVersion(){
+ let snapshots=[];try{snapshots=JSON.parse(localStorage.getItem(SNAPSHOTS_KEY)||'[]');}catch{}
+ if(!snapshots.length){status(mt('noVersions'));return;}
+ const options=snapshots.map((item,index)=>({value:index,label:new Date(item.savedAt).toLocaleString(uiLanguage==='zh'?'zh-CN':uiLanguage)+' — '+item.reason}));
+ const selected=await showStudioDialog({title:dt('localVersions'),message:dt('chooseVersion'),options,confirmText:dt('restore')});const choice=Number(selected);if(selected===null||!snapshots[choice])return;
+ if(!await askConfirm(dt('restoreVersion'),dt('restoreMessage'),dt('restore'),true))return;
+ project=validateProject(clone(snapshots[choice].project));undoStacks.clear();redoStacks.clear();renderAll();markDirty(mt('versionRestored'));
+}
+
+document.getElementById('assetSearch').addEventListener('input',renderAssetList);
+document.getElementById('groupFilter').addEventListener('change',renderAssetList);
+document.getElementById('newAsset').addEventListener('click',()=>newAsset(false));
+document.getElementById('duplicateAsset').addEventListener('click',()=>newAsset(true));
+document.getElementById('renameAsset').addEventListener('click',renameAsset);
+document.getElementById('deleteAsset').addEventListener('click',deleteAsset);
+document.getElementById('addFrame').addEventListener('click',()=>addFrame(false));
+document.getElementById('duplicateFrame').addEventListener('click',()=>addFrame(true));
+document.getElementById('moveFrameLeft').addEventListener('click',()=>moveFrame(-1));
+document.getElementById('moveFrameRight').addEventListener('click',()=>moveFrame(1));
+document.getElementById('deleteFrame').addEventListener('click',deleteFrame);
+document.getElementById('assetName').addEventListener('input',updateAssetFields);
+document.getElementById('assetGroup').addEventListener('change',updateAssetFields);
+document.getElementById('frameName').addEventListener('input',updateFrameFields);
+document.getElementById('frameDuration').addEventListener('input',updateFrameFields);
+document.getElementById('grid').addEventListener('change',event=>{project.gridVisible=event.target.checked;renderEditor();markDirty(mt('gridChanged'));});
+document.getElementById('onionSkin').addEventListener('change',event=>{project.onionSkin=event.target.checked;renderEditor();markDirty(mt('onionChanged'));});
+document.getElementById('addColor').addEventListener('click',addCustomColor);
+document.getElementById('removeColor').addEventListener('click',removeCustomColor);
+document.getElementById('undo').addEventListener('click',undo);
+document.getElementById('redo').addEventListener('click',redo);
+document.getElementById('playAnimation').addEventListener('click',toggleAnimation);
+document.getElementById('saveProject').addEventListener('click',manualSave);
+document.getElementById('restoreVersion').addEventListener('click',restoreVersion);
+document.getElementById('exportFramePng').addEventListener('click',exportFramePng);
+document.getElementById('exportSheet').addEventListener('click',exportSheet);
+document.getElementById('exportProject').addEventListener('click',exportProject);
+document.getElementById('importProject').addEventListener('click',()=>document.getElementById('projectFile').click());
+document.getElementById('projectFile').addEventListener('change',event=>importProjectFile(event.target.files?.[0]));
+document.getElementById('importPng').addEventListener('click',()=>document.getElementById('pngFile').click());
+document.getElementById('pngFile').addEventListener('change',event=>importPngFile(event.target.files?.[0]));
+document.getElementById('languageSelect').addEventListener('change',event=>{
+ uiLanguage=event.target.value;localStorage.setItem(UI_LANG_KEY,uiLanguage);applyLanguage();makePalette();renderGroupFilter();renderAssetList();renderFrames();renderInspector();setSaveBadge(dirty?mt('dirty'):tr('saved'),dirty);status(tr('ready'));
+});
+document.getElementById('previewScale').addEventListener('change',event=>{
+ previewScale=Number(event.target.value);localStorage.setItem(PREVIEW_SCALE_KEY,String(previewScale));applyPreviewScale();
+});
+document.addEventListener('keydown',event=>{
+ if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='z'){event.preventDefault();event.shiftKey?redo():undo();}
+ else if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='y'){event.preventDefault();redo();}
+ else if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='s'){event.preventDefault();manualSave();}
+});
+window.addEventListener('beforeunload',event=>{if(!dirty)return;event.preventDefault();event.returnValue='';});
+window.addEventListener('pagehide',saveLocal);
+
+applyLanguage();applyPreviewScale();makePalette();renderAll();saveLocal();status(tr('ready'));
+</script>
+</body>
+</html>
