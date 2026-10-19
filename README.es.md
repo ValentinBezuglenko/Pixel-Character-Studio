@@ -4,6 +4,8 @@
 
 Editor independiente para navegador destinado a dibujar personajes pixel art de 16×16 y crear animaciones fotograma a fotograma. Funciona localmente, no requiere cuenta ni servidor y no está vinculado a ningún juego.
 
+![Editor Pixel Character Studio](assets/editor-preview.png)
+
 ## Funciones
 
 - editor de 16×16 con cuadrícula, borrador, deshacer y rehacer

@@ -4,6 +4,8 @@
 
 A standalone browser-based editor for drawing 16×16 pixel characters and creating frame-by-frame sprite animations. It works locally, requires no account or server, and is not tied to any game.
 
+![Pixel Character Studio editor](assets/editor-preview.png)
+
 ## Features
 
 - 16×16 pixel editor with grid, eraser, undo and redo
